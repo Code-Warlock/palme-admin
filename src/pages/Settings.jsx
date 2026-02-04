@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Shield, Globe, Moon, UserPlus, Trash2, Video, Tag, Truck, FileText, Save } from 'lucide-react';
+
+import { Shield, Globe, Moon, UserPlus, Trash2, Video, Tag, Truck, FileText, Save, Package, AlertCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -15,8 +16,11 @@ const Settings = () => {
     hero_badge_price: '',
     hero_badge_text: 'New Harvest',
     doorstep_price: 10000,
-    park_price: 5000,
-    delivery_note: 'Shipping fees are calculated based on weight.'
+    doorstep_note: 'Shipping fees are calculated based on weight.',
+    park_note: '',
+    
+    weight_threshold: 20, 
+    heavy_weight_note: 'Your order is over [limit]kg. We will contact you regarding extra shipping charges.'
   });
   
   const [admins, setAdmins] = useState([]);
@@ -32,14 +36,10 @@ const Settings = () => {
   const fetchSettings = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/settings`);
-      
       if (res.data) {
-        
-        
         const mergedSettings = Array.isArray(res.data) 
             ? res.data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {})
             : res.data;
-            
         setSettings(prev => ({ ...prev, ...mergedSettings }));
       }
     } catch (err) { console.error("Settings error", err); }
@@ -49,21 +49,6 @@ const Settings = () => {
     try { const res = await axios.get(`${API_URL}/api/admins`); setAdmins(res.data); } catch (err) {}
   };
 
-  
-  const handleSaveSetting = async (key, value) => {
-    setLoading(true);
-    try {
-        await axios.post(`${API_URL}/api/settings`, { key, value });
-        setSettings(prev => ({ ...prev, [key]: value }));
-        
-    } catch (err) {
-        alert("Failed to save setting");
-    } finally {
-        setLoading(false);
-    }
-  };
-
-  
   const saveAllTabSettings = async (keysToSave) => {
     setLoading(true);
     try {
@@ -80,7 +65,10 @@ const Settings = () => {
 
   const toggleMaintenance = async () => {
     const newValue = !settings.maintenance_mode;
-    handleSaveSetting('maintenance_mode', newValue);
+    try {
+        await axios.post(`${API_URL}/api/settings`, { key: 'maintenance_mode', value: newValue });
+        setSettings(prev => ({ ...prev, maintenance_mode: newValue }));
+    } catch (err) { alert("Failed to toggle maintenance"); }
   };
 
   const handleAddAdmin = async (e) => {
@@ -99,6 +87,13 @@ const Settings = () => {
         await axios.delete(`${API_URL}/api/admins/${id}`);
         setAdmins(admins.filter(a => a._id !== id));
     } catch (err) { alert("Failed to delete"); }
+  };
+
+  const handlePriceChange = (e) => {
+      const rawValue = e.target.value.replace(/,/g, '');
+      if (!isNaN(rawValue)) {
+          setSettings({ ...settings, doorstep_price: rawValue });
+      }
   };
 
   return (
@@ -165,34 +160,27 @@ const Settings = () => {
                  <div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 ${isDark ? 'translate-x-8' : ''}`}></div>
               </button>
            </div>
-          
         </div>
-        
       )}
 
       
       {activeTab === 'Content' && (
         <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-8 transition-colors">
-            
-            
             <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                     <Video className="text-palmeGreen" size={20} />
                     <h3 className="text-lg font-bold text-gray-800 dark:text-white">Homepage Video</h3>
                 </div>
-                <div className="flex gap-4">
-                    <input 
-                        type="text" 
-                        value={settings.youtube_link || ''}
-                        onChange={(e) => setSettings({...settings, youtube_link: e.target.value})}
-                        placeholder="e.g. https://www.youtube.com/embed/dQw4w9WgXcQ"
-                        className="flex-1 p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none"
-                    />
-                </div>
+                <input 
+                    type="text" 
+                    value={settings.youtube_link || ''}
+                    onChange={(e) => setSettings({...settings, youtube_link: e.target.value})}
+                    placeholder="e.g. https://www.youtube.com/embed/dQw4w9WgXcQ"
+                    className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none"
+                />
                 <p className="text-xs text-gray-400">Use the "Embed" link from YouTube (e.g. /embed/ID), not the watch link.</p>
             </div>
 
-            
             <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-gray-700">
                 <div className="flex items-center gap-2 mb-2">
                     <Tag className="text-palmeGreen" size={20} />
@@ -235,85 +223,103 @@ const Settings = () => {
       )}
 
       
-      
-{activeTab === 'Delivery' && (
-  <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-8 transition-colors">
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
-          <div>
-              <div className="flex items-center gap-2 mb-4">
-                  <Truck className="text-palmeGreen" size={20} />
-                  <h3 className="text-lg font-bold text-gray-800 dark:text-white">Doorstep Base Rate</h3>
-              </div>
-              <input 
-                  type="number" 
-                  value={settings.doorstep_price || 0}
-                  onChange={(e) => setSettings({...settings, doorstep_price: e.target.value})}
-                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none"
-              />
-          </div>
+      {activeTab === 'Delivery' && (
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-8 transition-colors">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                
+                <div>
+                    <div className="flex items-center gap-2 mb-4">
+                        <Truck className="text-palmeGreen" size={20} />
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white">Doorstep Base Rate</h3>
+                    </div>
+                    <div className="relative">
+                        <span className="absolute left-3 top-3 text-gray-500 font-bold">₦</span>
+                        <input 
+                            type="text" 
+                            value={Number(settings.doorstep_price).toLocaleString()} 
+                            onChange={handlePriceChange}
+                            className="w-full pl-8 p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none font-bold text-lg"
+                        />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">Base price for home delivery before weight calculation.</p>
+                </div>
 
-          
-          <div>
-              <div className="flex items-center gap-2 mb-4">
-                  <Truck className="text-palmeGreen" size={20} />
-                  <h3 className="text-lg font-bold text-gray-800 dark:text-white">Park Pickup Rate</h3>
-              </div>
-              <input 
-                  type="number" 
-                  value={settings.park_price || 0}
-                  onChange={(e) => setSettings({...settings, park_price: e.target.value})}
-                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none"
-              />
-          </div>
-      </div>
+                
+                <div>
+                    <div className="flex items-center gap-2 mb-4">
+                        <Package className="text-palmeGreen" size={20} />
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white">Heavy Weight Limit (kg)</h3>
+                    </div>
+                    <input 
+                        type="number" 
+                        value={settings.weight_threshold || 20} 
+                        onChange={(e) => setSettings({...settings, weight_threshold: e.target.value})}
+                        className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none"
+                        placeholder="e.g. 20"
+                    />
+                    <p className="text-xs text-gray-400 mt-2">Orders heavier than this will show the disclaimer.</p>
+                </div>
+            </div>
 
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-gray-100 dark:border-gray-700">
-          
-          
-          <div>
-              <div className="flex items-center gap-2 mb-2">
-                  <FileText className="text-palmeGreen" size={18} />
-                  <h3 className="font-bold text-gray-800 dark:text-white text-sm">Doorstep Instruction</h3>
-              </div>
-              <textarea 
-                  rows="3"
-                  value={settings.doorstep_note || ''}
-                  onChange={(e) => setSettings({...settings, doorstep_note: e.target.value})}
-                  placeholder="e.g. Shipping fees are calculated based on weight..."
-                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none resize-none text-sm"
-              ></textarea>
-          </div>
+             
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                 <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="text-orange-500" size={18} />
+                    <h3 className="font-bold text-gray-800 dark:text-white text-sm">Heavy Order Disclaimer</h3>
+                </div>
+                <textarea 
+                    rows="2"
+                    value={settings.heavy_weight_note || ''}
+                    onChange={(e) => setSettings({...settings, heavy_weight_note: e.target.value})}
+                    placeholder="e.g. This order is over [limit]kg. We will contact you..."
+                    className="w-full p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800 dark:text-white focus:ring-2 focus:ring-orange-500 outline-none resize-none text-sm"
+                ></textarea>
+                <p className="text-xs text-gray-400 mt-1">Use <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">[limit]</span> to dynamically show the weight limit (e.g. "20kg").</p>
+            </div>
 
-          
-          <div>
-              <div className="flex items-center gap-2 mb-2">
-                  <FileText className="text-palmeGreen" size={18} />
-                  <h3 className="font-bold text-gray-800 dark:text-white text-sm">Park Pickup Instruction</h3>
-              </div>
-              <textarea 
-                  rows="3"
-                  value={settings.park_note || ''}
-                  onChange={(e) => setSettings({...settings, park_note: e.target.value})}
-                  placeholder="e.g. Please bring your ID card to the park driver..."
-                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none resize-none text-sm"
-              ></textarea>
-          </div>
-      </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div>
+                    <div className="flex items-center gap-2 mb-2">
+                        <FileText className="text-palmeGreen" size={18} />
+                        <h3 className="font-bold text-gray-800 dark:text-white text-sm">Doorstep Instruction</h3>
+                    </div>
+                    <textarea 
+                        rows="3"
+                        value={settings.doorstep_note || ''}
+                        onChange={(e) => setSettings({...settings, doorstep_note: e.target.value})}
+                        placeholder="e.g. Shipping fees are calculated based on weight..."
+                        className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none resize-none text-sm"
+                    ></textarea>
+                </div>
 
-      <div className="pt-4 flex justify-end">
-          <button 
-              onClick={() => saveAllTabSettings(['doorstep_price', 'park_price', 'doorstep_note', 'park_note'])}
-              className="flex items-center gap-2 bg-palmeGreen hover:bg-green-800 text-white font-bold py-3 px-8 rounded-xl transition-all"
-              disabled={loading}
-          >
-              <Save size={18} /> {loading ? 'Saving...' : 'Save Delivery Settings'}
-          </button>
-      </div>
-  </div>
-)}
+                <div>
+                    <div className="flex items-center gap-2 mb-2">
+                        <FileText className="text-palmeGreen" size={18} />
+                        <h3 className="font-bold text-gray-800 dark:text-white text-sm">Park Pickup Instruction</h3>
+                    </div>
+                    <textarea 
+                        rows="3"
+                        value={settings.park_note || ''}
+                        onChange={(e) => setSettings({...settings, park_note: e.target.value})}
+                        placeholder="e.g. Please bring your ID card to the park driver..."
+                        className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-palmeGreen outline-none resize-none text-sm"
+                    ></textarea>
+                </div>
+            </div>
+
+            <div className="pt-4 flex justify-end">
+                <button 
+                    onClick={() => saveAllTabSettings(['doorstep_price', 'weight_threshold', 'heavy_weight_note', 'doorstep_note', 'park_note'])}
+                    className="flex items-center gap-2 bg-palmeGreen hover:bg-green-800 text-white font-bold py-3 px-8 rounded-xl transition-all"
+                    disabled={loading}
+                >
+                    <Save size={18} /> {loading ? 'Saving...' : 'Save Delivery Settings'}
+                </button>
+            </div>
+        </div>
+      )}
 
       
       {activeTab === 'Security' && (

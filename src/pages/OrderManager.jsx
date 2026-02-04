@@ -1,29 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useLocation } from 'react-router-dom'; // ✅ Added to read URL
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Filter, PlusCircle, Trash2, X, Package, User, MapPin, Calendar, Printer, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const OrderManager = () => {
+  const location = useLocation(); // ✅ Hook to access URL
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [newStatus, setNewStatus] = useState('');
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // 1. Fetch Orders
   useEffect(() => {
     fetchOrders();
   }, []);
 
+  // 2. ✅ LISTENER: Check URL for search query coming from Sidebar
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const query = params.get('search');
+    if (query) {
+        setSearchTerm(query);
+    }
+  }, [location.search]);
+
   const fetchOrders = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/orders`);
-      setOrders(res.data);
+      // Sort orders by newest first immediately upon fetching
+      const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setOrders(sorted);
     } catch (err) {
       console.error("Error fetching orders:", err);
     } finally {
@@ -129,13 +144,24 @@ const OrderManager = () => {
     } catch (err) { toast.error("Check console - check Paystack logic"); }
   };
 
+  // ✅ Smarter Search Logic
   const filteredOrders = orders.filter(order => {
-    const displayId = order._id.slice(-6).toUpperCase();
     const query = searchTerm.replace('#', '').toLowerCase();
+    
+    // Safety check for null values
+    const id = order._id ? order._id.toLowerCase() : "";
+    const displayId = order._id ? order._id.slice(-6).toLowerCase() : "";
+    const name = order.customer?.name ? order.customer.name.toLowerCase() : "";
+    const email = order.customer?.email ? order.customer.email.toLowerCase() : "";
+    const phone = order.customer?.phone ? order.customer.phone : "";
+
     const matchesSearch = 
-      order._id.toLowerCase().includes(query) ||
-      displayId.toLowerCase().includes(query) ||
-      (order.customer?.name || "").toLowerCase().includes(query);
+      id.includes(query) ||
+      displayId.includes(query) ||
+      name.includes(query) ||
+      email.includes(query) ||
+      phone.includes(query);
+
     const matchesStatus = statusFilter === 'All' || order.orderStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -172,7 +198,7 @@ const OrderManager = () => {
           <Search className="absolute left-3 top-3 text-gray-400" size={18} />
           <input 
             type="text" 
-            placeholder="Search Order ID (#78A...) or Name" 
+            placeholder="Search ID, Name, Email or Phone" 
             className="w-full pl-10 p-2.5 border rounded-lg focus:outline-none focus:border-palmeGreen dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -204,7 +230,7 @@ const OrderManager = () => {
         {loading ? (
           <div className="p-12 text-center text-gray-400 animate-pulse">Loading Orders...</div>
         ) : filteredOrders.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">No orders found.</div>
+          <div className="p-12 text-center text-gray-400">No orders found matching "{searchTerm}"</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -223,7 +249,10 @@ const OrderManager = () => {
                 {currentRows.map((order) => (
                   <tr key={order._id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer" onClick={() => handleOpenModal(order)}>
                     <td className="p-4 font-mono text-xs text-gray-500 dark:text-gray-400">#{order._id.slice(-6).toUpperCase()}</td>
-                    <td className="p-4 font-bold text-gray-800 dark:text-gray-200">{order.customer?.name || "Unknown"}</td>
+                    <td className="p-4 font-bold text-gray-800 dark:text-gray-200">
+                        {order.customer?.name || "Unknown"}
+                        <div className="text-[10px] text-gray-400 font-normal">{order.customer?.email}</div>
+                    </td>
                     <td className="p-4 text-gray-600 dark:text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</td>
                     <td className="p-4 text-gray-600 dark:text-gray-400">{order.items?.length || 0} Items</td>
                     <td className="p-4 font-bold text-gray-900 dark:text-white">₦{order.totalAmount.toLocaleString()}</td>
