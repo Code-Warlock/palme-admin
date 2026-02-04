@@ -21,13 +21,10 @@ const AdminLayout = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    // 1. SMART PROFILE NAME LOGIC
     const userStr = localStorage.getItem('palme_user');
     if (userStr) {
         const user = JSON.parse(userStr);
         let displayName = user.name || 'Admin';
-        
-        // If name is generic "Admin User", use the name from email (e.g. john@...)
         if ((displayName === 'Admin User' || displayName === 'Admin') && user.email) {
             const emailName = user.email.split('@')[0];
             displayName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
@@ -44,10 +41,9 @@ const AdminLayout = ({ children }) => {
 
             const newNotifs = [];
 
-            // 2. SORTED NOTIFICATIONS (Newest First)
             const pending = orderRes.data
                 .filter(o => o.status === 'Pending')
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Newest at top
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
             pending.forEach(o => {
                 newNotifs.push({
@@ -59,7 +55,6 @@ const AdminLayout = ({ children }) => {
                 });
             });
 
-            // Low Stock Notifications
             const lowStock = productRes.data.filter(p => (p.stock || 0) < 10);
             lowStock.forEach(p => {
                 newNotifs.push({
@@ -79,7 +74,6 @@ const AdminLayout = ({ children }) => {
 
     fetchData();
 
-    // Close notifications when clicking outside
     const handleClickOutside = (event) => {
         if (notifRef.current && !notifRef.current.contains(event.target)) {
             setNotifOpen(false);
@@ -101,12 +95,7 @@ const AdminLayout = ({ children }) => {
     if (!searchQuery.trim()) return;
 
     const query = searchQuery.trim();
-    
-    // Logic: If it looks like an Order ID, go to orders
-    const isOrder = 
-        query.toUpperCase().includes('ORD') || 
-        /\d/.test(query) ||
-        (query.length > 20 && !query.includes(' '));
+    const isOrder = query.toUpperCase().includes('ORD') || /\d/.test(query) || (query.length > 20 && !query.includes(' '));
 
     if (isOrder) {
         navigate(`/orders?search=${query}`);
@@ -129,11 +118,13 @@ const AdminLayout = ({ children }) => {
 
   return (
     <div className="flex min-h-screen bg-[#F3F5F7] dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200"> 
-      
-      {/* Mobile Overlay */}
-      <div className={`fixed inset-0 bg-black/50 z-20 md:hidden ${sidebarOpen ? 'block' : 'hidden'}`} onClick={() => setSidebarOpen(false)}></div>
+      <div 
+        className={`fixed inset-0 bg-black/50 z-20 transition-opacity duration-300 md:hidden 
+        ${sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 
+        onClick={() => setSidebarOpen(false)}
+      ></div>
 
-      {/* Sidebar */}
+      
       <aside className={`fixed md:sticky top-0 h-screen w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 flex flex-col z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-8 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center gap-2">
@@ -175,10 +166,10 @@ const AdminLayout = ({ children }) => {
         </div>
       </aside>
 
-      {/* Main Content */}
+      
       <main className="flex-1 flex flex-col h-screen overflow-y-auto relative z-0">
         
-        {/* Header */}
+        
         <header className="bg-white dark:bg-gray-800 h-20 px-8 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 sticky top-0 z-10 transition-colors duration-200">
           <div className="flex items-center gap-4">
               <button onClick={() => setSidebarOpen(true)} className="md:hidden text-gray-500"><Menu /></button>
@@ -189,7 +180,7 @@ const AdminLayout = ({ children }) => {
 
           <div className="flex items-center gap-6">
             
-            {/* Search */}
+            
             <form onSubmit={handleGlobalSearch} className="hidden md:flex items-center bg-gray-50 dark:bg-gray-700 px-4 py-2.5 rounded-xl border border-gray-100 dark:border-gray-600 w-64 focus-within:ring-2 focus-within:ring-palmeGreen/20 transition-all">
                 <Search size={18} className="text-gray-400" />
                 <input 
@@ -201,7 +192,7 @@ const AdminLayout = ({ children }) => {
                 />
             </form>
 
-            {/* Notifications */}
+            
             <div className="relative" ref={notifRef}>
                 <button 
                     onClick={() => setNotifOpen(!notifOpen)}
@@ -249,7 +240,7 @@ const AdminLayout = ({ children }) => {
                 )}
             </div>
             
-            {/* User Profile */}
+            
             <div className="flex items-center gap-3 pl-6 border-l border-gray-100 dark:border-gray-700">
               <div className="text-right hidden md:block">
                   <p className="text-sm font-bold text-gray-800 dark:text-gray-200 capitalize">{adminName}</p>
