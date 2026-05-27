@@ -79,7 +79,8 @@ const OrderManager = () => {
             .item-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
             .item-table th { background: #f4f4f4; padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
             .item-table td { padding: 10px; border-bottom: 1px solid #eee; }
-            .total { text-align: right; font-size: 20px; font-weight: bold; margin-top: 20px; color: #1a4d2e; }
+            .total { text-align: right; font-size: 20px; font-weight: bold; margin-top: 20px; color: #1a4d2e; padding-top: 10px; border-top: 2px solid #eee;}
+            .summary-line { display: flex; justify-content: space-between; max-width: 300px; margin-left: auto; padding: 5px 0; font-size: 14px;}
           </style>
         </head>
         <body>
@@ -87,25 +88,50 @@ const OrderManager = () => {
                 <div class="logo">PALME FOODS</div>
                 <div>Invoice #${selectedOrder._id.slice(-6).toUpperCase()}</div>
             </div>
+            
             <p><strong>Customer:</strong> ${selectedOrder.customer?.name}</p>
             <p><strong>Phone:</strong> ${selectedOrder.customer?.phone}</p>
+            <p><strong>Delivery Address:</strong> ${selectedOrder.customer?.address || 'N/A'}</p>
             <p><strong>Date:</strong> ${new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
             
             <table class="item-table">
                 <thead>
-                    <tr><th>Item</th><th>Qty</th><th>Price</th></tr>
+                    <tr><th>Item</th><th>Qty</th><th style="text-align: right;">Price</th></tr>
                 </thead>
                 <tbody>
                     ${selectedOrder.items?.map(item => `
                         <tr>
                             <td>${item.name}</td>
                             <td>${item.qty || item.quantity}</td>
-                            <td>₦${item.price.toLocaleString()}</td>
+                            <td style="text-align: right;">₦${item.price.toLocaleString()}</td>
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
-            <div class="total">Total Amount: ₦${selectedOrder.totalAmount.toLocaleString()}</div>
+            
+            <div style="margin-top: 30px;">
+                <div class="summary-line">
+                    <span>Subtotal:</span>
+                    <span>₦${(selectedOrder.subtotal || selectedOrder.items.reduce((acc, i) => acc + (i.price * (i.qty||i.quantity)), 0)).toLocaleString()}</span>
+                </div>
+                <div class="summary-line">
+                    <span>Shipping:</span>
+                    <span>₦${(selectedOrder.shippingFee || 0).toLocaleString()}</span>
+                </div>
+                ${selectedOrder.discountAmount ? `
+                <div class="summary-line" style="color: green;">
+                    <span>Discount:</span>
+                    <span>-₦${selectedOrder.discountAmount.toLocaleString()}</span>
+                </div>` : ''}
+                ${selectedOrder.tipAmount ? `
+                <div class="summary-line">
+                    <span>Tip Amount:</span>
+                    <span>₦${selectedOrder.tipAmount.toLocaleString()}</span>
+                </div>` : ''}
+                <div class="total">
+                    Total Paid: ₦${selectedOrder.totalAmount.toLocaleString()}
+                </div>
+            </div>
             <script>window.onload = function() { window.print(); window.close(); }</script>
         </body>
       </html>
