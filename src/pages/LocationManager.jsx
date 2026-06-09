@@ -249,10 +249,10 @@ const LocationManager = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Full Address / Description</label>
+                  
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Full Address / Description (Optional)</label>
                   <textarea 
                     className="w-full p-3 border rounded-lg focus:border-palmeGreen outline-none h-20 resize-none dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                    required 
                     placeholder="Describe how the customer finds this park..."
                     value={formData.address}
                     onChange={(e) => setFormData({...formData, address: e.target.value})}
