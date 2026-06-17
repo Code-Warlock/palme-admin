@@ -8,20 +8,19 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const SiteManager = () => {
   const [activeTab, setActiveTab] = useState('announcement');
   
- 
   const [slides, setSlides] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [faqs, setFaqs] = useState([]);
   const [galleryImages, setGalleryImages] = useState([]); 
   const [processVideo, setProcessVideo] = useState(null);
-  const [announcement, setAnnouncement] = useState({ show: true, text: '', code: '', color: 'bg-palmeGreen' });
-
+  
  
+  const [announcement, setAnnouncement] = useState({ _id: null, show: true, text: '', code: '', color: 'bg-palmeGreen' });
+
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState(null); 
   const [formData, setFormData] = useState({}); 
 
- 
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -43,16 +42,39 @@ const SiteManager = () => {
       setFaqs(faqRes.data);
       setGalleryImages(galleryRes.data);
       if (vidRes.data.length > 0) setProcessVideo(vidRes.data[0]);
-      if (annRes.data.length > 0) setAnnouncement(annRes.data[0].data);
+      
+     
+      if (annRes.data.length > 0) {
+          setAnnouncement({
+              _id: annRes.data[0]._id,
+              ...annRes.data[0].data  
+          });
+      }
     } catch (err) { console.error("Failed to load content"); }
   };
 
- 
   const handleSaveAnnouncement = async () => {
+   
+    if(!window.confirm("Are you sure you want to push this announcement live to the website?")) return;
+
     try {
-      await axios.post(`${API_URL}/api/content`, { type: 'announcement', data: announcement });
-      alert("Announcement Saved!");
-    } catch (err) { alert("Failed"); }
+     
+      const { _id, ...announcementData } = announcement;
+
+     
+      if (_id) {
+          await axios.delete(`${API_URL}/api/content/${_id}`);
+      }
+
+     
+      const res = await axios.post(`${API_URL}/api/content`, { type: 'announcement', data: announcementData });
+      setAnnouncement({ _id: res.data._id, ...res.data.data });
+      
+      alert("Announcement Saved Successfully!");
+    } catch (err) { 
+        console.error(err);
+        alert("Failed to save announcement."); 
+    }
   };
 
   const handleAddSlide = async (url) => {
@@ -128,7 +150,6 @@ const SiteManager = () => {
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Site Content & Media</h1>
       </div>
       
-      
       <div className="flex space-x-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
         <TabButton id="announcement" icon={Megaphone} label="Announcement" />
         <TabButton id="carousel" icon={ImageIcon} label="Hero Slider" />
@@ -139,7 +160,6 @@ const SiteManager = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 min-h-[500px]">
-        
         
         {activeTab === 'announcement' && (
           <div className="max-w-xl space-y-6 animate-fade-in-up">
@@ -173,7 +193,6 @@ const SiteManager = () => {
           </div>
         )}
 
-        
         {activeTab === 'carousel' && (
           <div className="space-y-6 animate-fade-in-up">
             <div className="flex justify-between items-center">
@@ -188,14 +207,12 @@ const SiteManager = () => {
                  </div>
                ))}
                <div className="aspect-video bg-gray-50 dark:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col items-center justify-center p-4">
-                  
                   <ImageUpload key={refreshKey} label="Add Slide" onUploadComplete={handleAddSlide} />
                </div>
             </div>
           </div>
         )}
 
-        
         {activeTab === 'gallery' && (
           <div className="space-y-6 animate-fade-in-up">
             <div className="flex justify-between items-center">
@@ -209,14 +226,12 @@ const SiteManager = () => {
                  </div>
                ))}
                <div className="aspect-square bg-gray-50 dark:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col items-center justify-center p-4">
-                  
                   <ImageUpload key={refreshKey} label="Add Photo" onUploadComplete={handleAddGalleryImage} />
                </div>
             </div>
           </div>
         )}
 
-        
         {activeTab === 'testimonials' && (
           <div className="animate-fade-in-up">
             <div className="flex justify-between items-center mb-6">
@@ -241,7 +256,6 @@ const SiteManager = () => {
           </div>
         )}
 
-        
         {activeTab === 'process' && (
            <div className="max-w-xl animate-fade-in-up">
               <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-4">"See The Process" Video</h3>
@@ -257,7 +271,6 @@ const SiteManager = () => {
            </div>
         )}
 
-        
         {activeTab === 'faqs' && (
           <div className="animate-fade-in-up">
             <div className="flex justify-between items-center mb-6">
@@ -280,7 +293,6 @@ const SiteManager = () => {
 
       </div>
 
-      
       {modalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-in-up">
