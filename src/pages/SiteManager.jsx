@@ -13,8 +13,6 @@ const SiteManager = () => {
   const [faqs, setFaqs] = useState([]);
   const [galleryImages, setGalleryImages] = useState([]); 
   const [processVideo, setProcessVideo] = useState(null);
-  
- 
   const [announcement, setAnnouncement] = useState({ _id: null, show: true, text: '', code: '', color: 'bg-palmeGreen' });
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -43,33 +41,34 @@ const SiteManager = () => {
       setGalleryImages(galleryRes.data);
       if (vidRes.data.length > 0) setProcessVideo(vidRes.data[0]);
       
-     
       if (annRes.data.length > 0) {
+          
+          const latestAnn = annRes.data[annRes.data.length - 1];
           setAnnouncement({
-              _id: annRes.data[0]._id,
-              ...annRes.data[0].data  
+              _id: latestAnn._id,
+              ...latestAnn.data
           });
       }
     } catch (err) { console.error("Failed to load content"); }
   };
 
   const handleSaveAnnouncement = async () => {
-   
     if(!window.confirm("Are you sure you want to push this announcement live to the website?")) return;
 
     try {
-     
-      const { _id, ...announcementData } = announcement;
-
-     
-      if (_id) {
-          await axios.delete(`${API_URL}/api/content/${_id}`);
+      
+      const existing = await axios.get(`${API_URL}/api/content/announcement`);
+      
+      
+      for (const item of existing.data) {
+          await axios.delete(`${API_URL}/api/content/${item._id}`);
       }
 
-     
-      const res = await axios.post(`${API_URL}/api/content`, { type: 'announcement', data: announcementData });
-      setAnnouncement({ _id: res.data._id, ...res.data.data });
       
+      const { _id, ...announcementData } = announcement;
+      const res = await axios.post(`${API_URL}/api/content`, { type: 'announcement', data: announcementData });
+      
+      setAnnouncement({ _id: res.data._id, ...res.data.data });
       alert("Announcement Saved Successfully!");
     } catch (err) { 
         console.error(err);
